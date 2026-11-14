@@ -1,100 +1,89 @@
-import json
-import os
-from time import time
-from sys import argv
-from os.path import getmtime
-from zipfile import ZipFile, ZIP_DEFLATED
+"""Writes pluginmaster.json from the manifests inside plugins/<InternalName>/latest.zip."""
 
-DOWNLOAD_URL = 'https://github.com/Vayhyr/MyDalamudPlugins/raw/master/plugins/{plugin_name}/latest.zip'
+import json
+import subprocess
+from pathlib import Path
+from zipfile import ZipFile
+
+PLUGINS_DIR = Path("plugins")
+MASTER_PATH = Path("pluginmaster.json")
+DOWNLOAD_URL = (
+    "https://raw.githubusercontent.com/AurelienTHOREL/MyDalamudPlugins/master/"
+    "plugins/{plugin_name}/latest.zip"
+)
 
 DEFAULTS = {
-    'IsHide': False,
-    'IsTestingExclusive': False,
-    'ApplicableVersion': 'any',
+    "IsHide": False,
+    "IsTestingExclusive": False,
+    "ApplicableVersion": "any",
 }
 
-DUPLICATES = {
-    'DownloadLinkInstall': ['DownloadLinkTesting', 'DownloadLinkUpdate'],
-}
-
-TRIMMED_KEYS = [
-    'Author',
-    'Name',
-    'Description',
-    'InternalName',
-    'AssemblyVersion',
-    'RepoUrl',
-    'ApplicableVersion',
-    'Tags',
-    'DalamudApiLevel',
+KEPT_KEYS = [
+    "Author",
+    "Name",
+    "Punchline",
+    "Description",
+    "InternalName",
+    "AssemblyVersion",
+    "RepoUrl",
+    "IconUrl",
+    "ApplicableVersion",
+    "Tags",
+    "DalamudApiLevel",
 ]
 
-def main():
-    # extract the manifests from inside the zip files
-    master = extract_manifests()
 
-    # trim the manifests
-    master = [trim_manifest(manifest) for manifest in master]
+def read_manifest(zip_path: Path) -> dict:
+    """Returns the <InternalName>.json manifest stored at the root of a plugin zip."""
+    plugin_name = zip_path.parent.name
+    manifest_name = f"{plugin_name}.json"
+    with ZipFile(zip_path) as archive:
+        if manifest_name not in archive.namelist():
+            raise SystemExit(f"{zip_path}: no {manifest_name} at the root of the zip")
+        manifest = json.loads(archive.read(manifest_name).decode("utf-8-sig"))
+    if manifest.get("InternalName") != plugin_name:
+        raise SystemExit(
+            f"{zip_path}: InternalName {manifest.get('InternalName')!r} "
+            f"does not match the folder name {plugin_name!r}"
+        )
+    return manifest
 
-    # convert the list of manifests into a master list
-    add_extra_fields(master)
 
-    # write the master
-    write_master(master)
+def last_commit_time(path: Path) -> str:
+    """Returns the Unix time of the last commit that touched path."""
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%ct", "--", str(path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    timestamp = result.stdout.strip()
+    if not timestamp:
+        raise SystemExit(f"{path} has no commit yet; commit it before regenerating")
+    return timestamp
 
-    # update the LastUpdated field in master
-    last_updated()
 
-def extract_manifests():
-    manifests = []
+def master_entry(zip_path: Path) -> dict:
+    """Builds the pluginmaster entry for one plugin zip."""
+    manifest = read_manifest(zip_path)
+    entry = {key: manifest[key] for key in KEPT_KEYS if key in manifest}
+    for key, value in DEFAULTS.items():
+        entry.setdefault(key, value)
+    download_url = DOWNLOAD_URL.format(plugin_name=entry["InternalName"])
+    entry["DownloadLinkInstall"] = download_url
+    entry["DownloadLinkTesting"] = download_url
+    entry["DownloadLinkUpdate"] = download_url
+    entry["DownloadCount"] = 0
+    entry["LastUpdated"] = last_commit_time(zip_path)
+    return entry
 
-    for dirpath, dirnames, filenames in os.walk('./plugins'):
-        if len(filenames) == 0 or 'latest.zip' not in filenames:
-            continue
-        plugin_name = dirpath.split('/')[-1]
-        latest_zip = f'{dirpath}/latest.zip'
-        with ZipFile(latest_zip) as z:
-            manifest = json.loads(z.read(f'{plugin_name}.json').decode('utf-8'))
-            manifests.append(manifest)
 
-    return manifests
+def main() -> None:
+    zips = sorted(PLUGINS_DIR.glob("*/latest.zip"))
+    master = [master_entry(zip_path) for zip_path in zips]
+    MASTER_PATH.write_text(json.dumps(master, indent=4) + "\n", encoding="utf-8")
+    print(f"pluginmaster.json: {len(master)} plugin(s)")
 
-def add_extra_fields(manifests):
-    for manifest in manifests:
-        # generate the download link from the internal assembly name
-        manifest['DownloadLinkInstall'] = DOWNLOAD_URL.format(plugin_name=manifest["InternalName"])
-        # add default values if missing
-        for k, v in DEFAULTS.items():
-            if k not in manifest:
-                manifest[k] = v
-        # duplicate keys as specified in DUPLICATES
-        for source, keys in DUPLICATES.items():
-            for k in keys:
-                if k not in manifest:
-                    manifest[k] = manifest[source]
-        manifest['DownloadCount'] = 0
 
-def write_master(master):
-    # write as pretty json
-    with open('pluginmaster.json', 'w') as f:
-        json.dump(master, f, indent=4)
-
-def trim_manifest(plugin):
-    return {k: plugin[k] for k in TRIMMED_KEYS if k in plugin}
-
-def last_updated():
-    with open('pluginmaster.json') as f:
-        master = json.load(f)
-
-    for plugin in master:
-        latest = f'plugins/{plugin["InternalName"]}/latest.zip'
-        modified = int(getmtime(latest))
-
-        if 'LastUpdated' not in plugin or modified != int(plugin['LastUpdated']):
-            plugin['LastUpdated'] = str(modified)
-
-    with open('pluginmaster.json', 'w') as f:
-        json.dump(master, f, indent=4)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
