@@ -1,25 +1,46 @@
 name: Regenerate PluginMaster
-on: 
+
+on:
   workflow_dispatch:
   push:
-    branches:
-    - master
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regenerate-pluginmaster
+  cancel-in-progress: false
+
 jobs:
   generate:
     name: Regenerate PluginMaster
-    runs-on: ubuntu-latest
-    env:
-      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
-      - uses: actions/setup-python@v2
+      # Full history: LastUpdated is the time of the last commit to each latest.zip. The token
+      # stays configured for the push below.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-            python-version: '3.8'
-      - uses: actions/checkout@v2
+          fetch-depth: 0
+          persist-credentials: true  # zizmor: ignore[artipacked]
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.13"
+
       - name: Generate PluginMaster
         run: python generate_pluginmaster.py
-      - uses: EndBug/add-and-commit@v7
-        with:
-          author_name: GitHub Action
-          author_email: github-actions[bot]@users.noreply.github.com
-          message: Regenerate PluginMaster
-      - uses: Ilshidur/action-discord@master
+
+      - name: Commit pluginmaster.json if it changed
+        run: |
+          if git diff --quiet -- pluginmaster.json; then
+            echo "pluginmaster.json is unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pluginmaster.json
+          git commit -m "Regenerate PluginMaster"
+          git push origin HEAD:master
