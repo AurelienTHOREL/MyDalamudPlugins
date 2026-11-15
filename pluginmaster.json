@@ -30,7 +30,7 @@
         "Punchline": "Shows where each party member should stand, read from BossMod Reborn.",
         "Description": "Reads the current boss fight state from BossMod Reborn and draws where each of the 8 party members should stand for the owner's strategy.",
         "InternalName": "FightSolver",
-        "AssemblyVersion": "0.3.0.0",
+        "AssemblyVersion": "0.4.0.0",
         "ApplicableVersion": "any",
         "DalamudApiLevel": 15,
         "IsHide": false,
@@ -39,6 +39,6 @@
         "DownloadLinkTesting": "https://raw.githubusercontent.com/AurelienTHOREL/MyDalamudPlugins/master/plugins/FightSolver/latest.zip",
         "DownloadLinkUpdate": "https://raw.githubusercontent.com/AurelienTHOREL/MyDalamudPlugins/master/plugins/FightSolver/latest.zip",
         "DownloadCount": 0,
-        "LastUpdated": "1794749133"
+        "LastUpdated": "1794773394"
     }
 ]
