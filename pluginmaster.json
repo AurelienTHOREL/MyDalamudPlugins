@@ -5,7 +5,7 @@
         "Punchline": "Let an AI agent read the game, review your pulls and tune BossMod Reborn and FightSolver",
         "Description": "Connects an MCP client (Claude, DeepSeek and others) to FINAL FANTASY XIV. The agent can query game state, filter Dalamud logs and review recorded fights in natural language. Its raid coach summarizes each pull (deaths, avoidable damage, players off their spot), then adjusts BossMod Reborn settings and the FightSolver plan, journaling every change so it can be reverted. With the matching permissions enabled, it can also teleport and operate game windows.",
         "InternalName": "DalamudMCP",
-        "AssemblyVersion": "1.2.0.0",
+        "AssemblyVersion": "1.2.1.0",
         "RepoUrl": "https://github.com/AurelienTHOREL/DalamudMCP",
         "IconUrl": "https://raw.githubusercontent.com/AurelienTHOREL/MyDalamudPlugins/master/plugins/DalamudMCP/icon.png",
         "ApplicableVersion": "any",
@@ -22,7 +22,7 @@
         "DownloadLinkTesting": "https://raw.githubusercontent.com/AurelienTHOREL/MyDalamudPlugins/master/plugins/DalamudMCP/latest.zip",
         "DownloadLinkUpdate": "https://raw.githubusercontent.com/AurelienTHOREL/MyDalamudPlugins/master/plugins/DalamudMCP/latest.zip",
         "DownloadCount": 0,
-        "LastUpdated": "1794746545"
+        "LastUpdated": "1795457554"
     },
     {
         "Author": "FightSolver",
